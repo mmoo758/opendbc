@@ -9,6 +9,7 @@ from opendbc.car.honda.values import CruiseButtons, VISUAL_HUD, HONDA_BOSCH, HON
 from opendbc.car.interfaces import CarControllerBase
 
 from opendbc.sunnypilot.car.honda.mads import MadsCarController
+from opendbc.sunnypilot.car.honda.icbm import IntelligentCruiseButtonManagementInterface
 
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
 LongCtrlState = structs.CarControl.Actuators.LongControlState
@@ -99,10 +100,11 @@ HUDData = namedtuple("HUDData",
                       "lanes_visible", "fcw", "acc_alert", "steer_required", "lead_distance_bars", "dashed_lanes"])
 
 
-class CarController(CarControllerBase, MadsCarController):
+class CarController(CarControllerBase, MadsCarController, GasInterceptorCarController, IntelligentCruiseButtonManagementInterface):
   def __init__(self, dbc_names, CP, CP_SP):
     CarControllerBase.__init__(self, dbc_names, CP, CP_SP)
     MadsCarController.__init__(self)
+    IntelligentCruiseButtonManagementInterface.__init__(self, CP, CP_SP)
     self.packer = CANPacker(dbc_names[Bus.pt])
     self.params = CarControllerParams(CP)
     self.CAN = hondacan.CanBus(CP)
@@ -240,6 +242,10 @@ class CarController(CarControllerBase, MadsCarController):
       if self.CP.openpilotLongitudinalControl and self.CP.carFingerprint not in HONDA_BOSCH:
         self.speed = pcm_speed
         self.gas = pcm_accel / self.params.NIDEC_GAS_MAX
+
+    # Intelligent Cruise Button Management
+    can_sends.extend(IntelligentCruiseButtonManagementInterface.update(self, CC_SP, self.packer, self.frame,
+                                                                       self.last_button_frame, self.CAN))
 
     new_actuators = actuators.as_builder()
     new_actuators.speed = self.speed
