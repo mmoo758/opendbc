@@ -65,6 +65,7 @@ class CarParamsSP:
   safetyParam: int = auto_field()  # flags for custom safety flags
   pcmCruiseSpeed: bool = auto_field()
   intelligentCruiseButtonManagementAvailable: bool = auto_field()
+  enableGasInterceptor: bool = auto_field()
 
   neuralNetworkLateralControl: 'CarParamsSP.NeuralNetworkLateralControl' = field(default_factory=lambda: CarParamsSP.NeuralNetworkLateralControl())
 
@@ -151,9 +152,21 @@ class CarControlSP:
   @auto_dataclass
   class Param:
     key: str = auto_field()
-    value: str = auto_field()
+    value: bytes = auto_field()
+    type: 'CarControlSP.ParamType' = field(
+      default_factory=lambda: CarControlSP.ParamType.string
+    )
+
+  class ParamType(StrEnum):
+    string = auto()
+    bool = auto()
+    int = auto()
+    float = auto()
+    time = auto()
+    json = auto()
+    bytes = auto()
 
 
 @auto_dataclass
 class CarStateSP:
-  pass
+  speedLimit: float = auto_field()

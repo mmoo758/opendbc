@@ -264,6 +264,7 @@ routes = [
   CarTestRoute("cd9cff4b0b26c435/2021-05-13--15-12-39", TOYOTA.TOYOTA_CHR),
   CarTestRoute("57858ede0369a261/2021-05-18--20-34-20", TOYOTA.TOYOTA_CHR),  # hybrid
   CarTestRoute("ea8fbe72b96a185c/2023-02-08--15-11-46", TOYOTA.TOYOTA_CHR_TSS2),
+  CarTestRoute("ea8fbe72b96a185c|2023-02-22--09-20-34", TOYOTA.TOYOTA_CHR_TSS2),  # openpilot longitudinal, with smartDSU
   CarTestRoute("6719965b0e1d1737/2023-02-09--22-44-05", TOYOTA.TOYOTA_CHR_TSS2),  # hybrid
   CarTestRoute("6719965b0e1d1737/2023-08-29--06-40-05", TOYOTA.TOYOTA_CHR_TSS2),  # hybrid, openpilot longitudinal, radar disabled
   CarTestRoute("14623aae37e549f3/2021-10-24--01-20-49", TOYOTA.TOYOTA_PRIUS_V),
@@ -334,7 +335,7 @@ routes = [
   CarTestRoute("bc095dc92e101734/000000db--ee9fe46e57", RIVIAN.RIVIAN_R1_GEN1),
 
   CarTestRoute("7dc058789994da80/00000112--adb970f6a8", TESLA.TESLA_MODEL_3),
-  CarTestRoute("46cdc864ec865f4b/00000007--42f94db730", TESLA.TESLA_MODEL_Y),
+  CarTestRoute("c8a98e58647765ad/00000002--84e4746136", TESLA.TESLA_MODEL_Y),
   CarTestRoute("2c912ca5de3b1ee9/0000025d--6eb6bcbca4", TESLA.TESLA_MODEL_Y, segment=4),
   CarTestRoute("bdda168c0c35fad7/00000001--5c5a36ec06", TESLA.TESLA_MODEL_X), # openpilot longitudinal
 
