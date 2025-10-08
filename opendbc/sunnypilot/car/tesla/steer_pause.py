@@ -5,6 +5,7 @@ Copyright (c) 2021-, Haibin Wen, sunnypilot, and a number of other contributors.
 This file is part of sunnypilot and is licensed under the MIT License.
 See the LICENSE.md file in the root directory for more details.
 """
+import math
 from enum import Enum, auto
 from dataclasses import dataclass
 
@@ -21,12 +22,12 @@ STEER_PAUSE_HOLD_TARGET_DEVIATION = 10  # deg - max allowed deviation from targe
 
 def est_holding_torque(steering_angle: float, vEgo: float, VM: VehicleModel) -> float:
     """Estimate torque necessary to hold steering wheel in place.
-    
+
     Args:
         steering_angle: Current steering angle in degrees
         vEgo: Vehicle speed in m/s
         VM: VehicleModel instance
-        
+
     Returns:
         Estimated holding torque in Nm
     """
@@ -38,11 +39,11 @@ def override_above_holding_torque(driver_torque: float, holding_torque: float) -
     """
     Determines whether override torque is enough to hold the steering wheel in place (outward)
     or if input is above min torque threshold (inward).
-    
+
     Args:
         driver_torque: Torque applied by the driver in Nm
         holding_torque: Estimated torque needed to hold current steering angle
-        
+
     Returns:
         True if driver torque exceeds holding torque or minimum threshold
     """
@@ -56,10 +57,10 @@ def override_above_holding_torque(driver_torque: float, holding_torque: float) -
     return not (torque_override_left <= driver_torque <= torque_override_right)
 
 
-def get_lat_accel_from_steer(steer: float, v_ego: float, VM: VehicleModel) -> float:
-    """Calculate the lateral acceleration based on steering angle."""
-    curvature = VM.get_curvature(steer, v_ego, 0.0)
-    return (v_ego ** 2) * curvature
+def get_lat_accel_from_steer(steer: float, v_ego: float, VM: VehicleModel):
+  """Calculate the lateral acceleration based on steering angle."""
+  curvature = VM.calc_curvature(math.radians(steer), v_ego, 0)  # 1/m
+  return curvature * v_ego ** 2  # m/s^2
 
 
 class LateralPauseState(Enum):
@@ -75,7 +76,7 @@ class LateralPauseState(Enum):
 @dataclass
 class PauseStateManager:
     """Manages the state machine for lateral control pause functionality.
-    
+
     Handles transitions between different pause states and tracks time spent in each state.
     """
     state: LateralPauseState = LateralPauseState.INIT_WAIT
@@ -87,7 +88,7 @@ class PauseStateManager:
 
     def update_state(self, new_state: LateralPauseState) -> None:
         """Update the state and reset the timer.
-        
+
         Args:
             new_state: The new state to transition to
         """
@@ -97,7 +98,7 @@ class PauseStateManager:
 
     def tick(self, dt: float) -> None:
         """Update the time spent in the current state.
-        
+
         Args:
             dt: Time elapsed since last update in seconds
         """
@@ -105,7 +106,7 @@ class PauseStateManager:
 
     def time_in_state(self) -> float:
         """Get the time spent in the current state.
-        
+
         Returns:
             Time in seconds spent in current state
         """
