@@ -24,9 +24,6 @@ class CarState(CarStateBase, CarStateExt):
     self.hands_on_level = 0
     self.das_control = None
 
-    self.cluster_speed_hyst_gap = CV.KPH_TO_MS / 2.
-    self.cluster_min_speed = CV.KPH_TO_MS / 2.
-
   def update_summon_state(self, summon_state: str, cruise_enabled: bool):
     summon_now = summon_state in ("ACTIVE", "COMPLETE", "SELFPARK_STARTED")
     if summon_now and not self.summon_prev and not self.cruise_enabled_prev:
@@ -45,7 +42,6 @@ class CarState(CarStateBase, CarStateExt):
     # Vehicle speed
     ret.vEgoRaw = cp_party.vl["DI_speed"]["DI_vehicleSpeed"] * CV.KPH_TO_MS
     ret.vEgo, ret.aEgo = self.update_speed_kf(ret.vEgoRaw)
-    ret.vEgoCluster = ret.vEgo * 1.035  # adjustment factor to match cluster speed
 
     # Gas pedal
     ret.gasPressed = cp_party.vl["DI_systemStatus"]["DI_accelPedalPos"] > 0
