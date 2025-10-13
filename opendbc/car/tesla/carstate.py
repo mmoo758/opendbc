@@ -45,7 +45,7 @@ class CarState(CarStateBase, CarStateExt):
     # Vehicle speed
     ret.vEgoRaw = cp_party.vl["DI_speed"]["DI_vehicleSpeed"] * CV.KPH_TO_MS
     ret.vEgo, ret.aEgo = self.update_speed_kf(ret.vEgoRaw)
-    ret.vEgoCluster = ret.vEgo * 1.015  # adjustment factor to match cluster speed
+    ret.vEgoCluster = ret.vEgo * 1.035  # adjustment factor to match cluster speed
 
     # Gas pedal
     ret.gasPressed = cp_party.vl["DI_systemStatus"]["DI_accelPedalPos"] > 0
