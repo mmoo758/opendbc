@@ -229,6 +229,8 @@ class CarInterface(CarInterfaceBase):
   @staticmethod
   def _get_params_sp(stock_cp: structs.CarParams, ret: structs.CarParamsSP, candidate, fingerprint: dict[int, dict[int, int]],
                      car_fw: list[structs.CarParams.CarFw], alpha_long: bool, docs: bool) -> structs.CarParamsSP:
+    CAN = CanBus(stock_cp, fingerprint)
+
     for fw in car_fw:
       if fw.ecu == "eps" and b"," in fw.fwVersion:
         ret.flags |= HondaFlagsSP.EPS_MODIFIED.value
@@ -283,6 +285,8 @@ class CarInterface(CarInterfaceBase):
       else:
         stock_cp.lateralParams.torqueBP, stock_cp.lateralParams.torqueV = [[0, 2560], [0, 2560]]
         stock_cp.lateralTuning.pid.kpV, stock_cp.lateralTuning.pid.kiV = [[0.8], [0.24]]
+
+    ret.intelligentCruiseButtonManagementAvailable = candidate in HONDA_BOSCH
 
     return ret
 
