@@ -33,9 +33,4 @@ def create_gas_interceptor_command(packer, gas_amount, idx):
     values["GAS_COMMAND"] = gas_amount * 255.
     values["GAS_COMMAND2"] = gas_amount * 255.
 
-  dat = packer.make_can_msg("GAS_COMMAND", 0, values)[1]
-
-  checksum = crc8_pedal(dat[:-1])
-  values["PEDAL_CHECKSUM"] = checksum
-
   return packer.make_can_msg("GAS_COMMAND", 0, values)
