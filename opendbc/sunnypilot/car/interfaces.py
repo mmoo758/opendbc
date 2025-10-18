@@ -73,7 +73,9 @@ class NanoFFModel:
 
 def setup_interfaces(CI, CP: structs.CarParams, CP_SP: structs.CarParamsSP,
                      params_list: list[dict[str, str]], can_recv: CanRecvCallable = None, can_send: CanSendCallable = None) -> None:
-  params_dict = {k: v for param in params_list for k, v in param.items()}
+  params_dict = {}
+  if params_list is not None:
+    params_dict = {k: v for param in params_list for k, v in param.items()}
 
   _initialize_custom_longitudinal_tuning(CI, CP, CP_SP, params_dict)
   _initialize_coop_steering(CP, CP_SP, params_dict)
@@ -99,6 +101,12 @@ def _initialize_coop_steering(CP: structs.CarParams, CP_SP: structs.CarParamsSP,
     coop_steering = int(params_dict.get("TeslaCoopSteering", 0)) == 1
     if coop_steering:
       CP_SP.flags |= TeslaFlagsSP.COOP_STEERING.value
+    lkas_steering = int(params_dict.get("TeslaLkasSteering", 0)) == 1
+    if lkas_steering:
+      CP_SP.flags |= TeslaFlagsSP.LKAS_STEERING.value
+    pause_steering = int(params_dict.get("TeslaLowSpeedSteerPause", 0)) == 1
+    if pause_steering:
+      CP_SP.flags |= TeslaFlagsSP.PAUSE_STEERING.value
 
 def _initialize_radar_tracks(CP: structs.CarParams, CP_SP: structs.CarParamsSP, can_recv: CanRecvCallable = None, can_send: CanSendCallable = None) -> None:
   if CP.brand == 'hyundai':
