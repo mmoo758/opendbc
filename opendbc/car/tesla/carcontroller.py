@@ -6,7 +6,8 @@ from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.tesla.teslacan import TeslaCAN
 from opendbc.car.tesla.values import CarControllerParams
 from opendbc.car.vehicle_model import VehicleModel
-from opendbc.sunnypilot.car.tesla.coopsteering import CoopSteeringCarController
+from opendbc.sunnypilot.car.tesla.coop_steering import CoopSteeringCarController
+from opendbc.sunnypilot.car.tesla.values import TeslaAngleMap
 
 
 def get_safety_CP():
@@ -37,8 +38,15 @@ class CarController(CarControllerBase, CoopSteeringCarController):
     lat_active = CC.latActive and CS.hands_on_level < 3
 
     if self.frame % CarControllerParams.STEER_STEP == 0:
+      # Before 2024, model 3 had a constant steering rack ratio in respect to the steering angle.
+      # Hypothesis is that most other cars have variable ratio and AI model learnt to compensate for faster ratio away from the center.
+      # Emulate non-constant steering ratio to match other cars:
+      mapped_angle = np.interp(abs(actuators.steeringAngleDeg), TeslaAngleMap.XP, TeslaAngleMap.YP)
+      if actuators.steeringAngleDeg < 0:
+        mapped_angle = -mapped_angle
+
       # Angular rate limit based on speed
-      self.apply_angle_last = apply_steer_angle_limits_vm(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgoRaw, CS.out.steeringAngleDeg,
+      self.apply_angle_last = apply_steer_angle_limits_vm(mapped_angle, self.apply_angle_last, CS.out.vEgoRaw, CS.out.steeringAngleDeg,
                                                           lat_active, CarControllerParams, self.VM)
 
       can_sends.append(self.tesla_can.create_steering_control(*CoopSteeringCarController.update(self, self.apply_angle_last, lat_active, self.CP_SP, CS)))
@@ -64,7 +72,7 @@ class CarController(CarControllerBase, CoopSteeringCarController):
     new_actuators = actuators.as_builder()
     new_actuators.steeringAngleDeg = self.apply_angle_last
     new_actuators.accel = self.coop_steeringAngleDeg # debug
-    new_actuators.curvature = float(self.override_accel_rate_limiter.angle_last) # debug
+    new_actuators.curvature = float(self.debug_angle_desired_limited) # debug
     new_actuators.torque = float(self.override_angle_accu) # debug
 
     self.frame += 1
