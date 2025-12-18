@@ -9,10 +9,10 @@ import numpy as np
 from collections import namedtuple
 from dataclasses import replace
 
-from opendbc.car import structs, rate_limit, DT_CTRL
+from opendbc.car import structs, rate_limit, DT_CTRL, ACCELERATION_DUE_TO_GRAVITY
 from opendbc.car.vehicle_model import VehicleModel
 from opendbc.car.lateral import apply_steer_angle_limits_vm
-from opendbc.car.tesla.values import CarControllerParams
+from opendbc.car.tesla.values import CarControllerParams, AVERAGE_ROAD_ROLL
 from opendbc.sunnypilot.car.tesla.values import TeslaFlagsSP
 from opendbc.sunnypilot.car.tesla.steer_pause import PauseManager
 
@@ -20,7 +20,9 @@ from opendbc.sunnypilot.car.tesla.steer_pause import PauseManager
 DT_LAT_CTRL = DT_CTRL * CarControllerParams.STEER_STEP
 
 class CoopSteeringCarControllerParams(CarControllerParams):
-  ANGLE_LIMITS = replace(CarControllerParams.ANGLE_LIMITS, MAX_ANGLE_RATE=5)
+    ANGLE_LIMITS = replace(CarControllerParams.ANGLE_LIMITS,
+                          MAX_ANGLE_RATE = 5.0,
+                          MAX_LATERAL_JERK = 5.0 + (ACCELERATION_DUE_TO_GRAVITY * AVERAGE_ROAD_ROLL)) # Increased from default 3.6 to 5.6 m/s³
 
 STEERING_DEG_PHASE_LEAD_COEFF = 8.0
 
@@ -138,6 +140,149 @@ class SteerRateLimiter:
     angle_lim = rate_limit(angle, self._last, -angle_delta_lim, angle_delta_lim)
     self._last = angle_lim
     return angle_lim
+
+class SteerAccelLimiter:
+  """
+  Second-order limiter for steering angle:
+  - Limits angular acceleration (change in allowed angular rate).
+  - Enforces a hard max angular rate.
+  """
+  def __init__(self):
+    self.delta_rl = SteerRateLimiter()
+    self.angle_cmd = 0.0
+
+  def reset(self, angle: float) -> None:
+    self.delta_rl.reset(0)
+    self.angle_cmd = angle
+
+  def update(self, angle_target: float, max_rate: float, accel: float, decel: float, dt: float) -> float:
+    if dt <= 0.0:
+      return self.angle_cmd
+
+    # acceleration limits per update step
+    accel_delta = max(0.0, accel) * (dt * dt)
+    decel_delta = max(0.0, decel) * (dt * dt)
+
+    err = angle_target - self.angle_cmd
+    err = apply_bounds(err, max(0.0, max_rate) * dt)
+
+    # acceleration (towards target) or deceleration (away from target)
+    if err * self.delta_rl._last < 0:
+      delta = decel_delta
+    else:
+      delta = accel_delta
+
+    # Handle large decel (enabled with inf value)
+    if decel == np.inf and err * self.delta_rl._last < 0:
+      # if output crosses the target or target crosses the output
+      self.delta_rl._last = 0
+      angle_out = self.angle_cmd
+    else:
+      self.delta_rl._last = self.delta_rl.update(err, delta)
+      if decel == np.inf:
+        # if we are close to target, snap to it before we cross it
+        self.delta_rl._last = apply_bounds(self.delta_rl._last, abs(err))
+      angle_out = self.angle_cmd + self.delta_rl._last
+
+    # Integrate
+    self.angle_cmd = angle_out
+
+    return angle_out
+
+class JerkLimitedSteer:
+  """Jerk-, accel-, and rate-limited steering angle profile with optional nested SteerRateLimiter."""
+  ANGLE_EPS = 1e-8
+  VEL_EPS   = 1e-8
+
+  def __init__(self, angle0: float = 0.0, use_nested_rl: bool = False):
+    self.angle_cmd = float(angle0)   # rad or deg, be consistent
+    self.vel_cmd   = 0.0             # rate
+    self.acc_cmd   = 0.0             # accel
+    self.use_nested_rl = use_nested_rl
+    self._rl = SteerRateLimiter() if use_nested_rl else None
+    if self._rl:
+      self._rl.reset(self.angle_cmd)
+
+  def reset(self, angle: float = 0.0) -> None:
+    self.angle_cmd = float(angle)
+    self.vel_cmd   = 0.0
+    self.acc_cmd   = 0.0
+    if self._rl:
+      self._rl.reset(self.angle_cmd)
+
+  def update(self,
+             target_angle: float,
+             dt: float,
+             v_max: float,
+             a_max: float,
+             j_max: float,
+             snap: bool = True) -> float:
+    """
+    target_angle : desired angle
+    dt           : seconds
+    v_max        : max |dθ/dt|
+    a_max        : max |d²θ/dt²|
+    j_max        : max |d³θ/dt³|
+    snap         : snap to target on crossing to kill residuals
+    """
+    if dt <= 0.0:
+      return self.angle_cmd
+
+    err = target_angle - self.angle_cmd
+
+    # done & stopped?
+    if abs(err) < self.ANGLE_EPS and abs(self.vel_cmd) < self.VEL_EPS:
+      self.angle_cmd = target_angle
+      self.vel_cmd = 0.0
+      self.acc_cmd = 0.0
+      if self._rl:
+        # keep RL in sync
+        self._rl.reset(self.angle_cmd)
+      return self.angle_cmd
+
+    # braking distance with constant-accel model
+    bd = (self.vel_cmd * self.vel_cmd) / (a_max)  # >=0
+
+    # choose accel sign (accelerate vs brake)
+    if abs(err) <= bd + 1e-12:
+      if abs(self.vel_cmd) > 1e-12:
+        desired_acc = -a_max if self.vel_cmd > 0.0 else a_max
+      else:
+        desired_acc = 0.0
+    else:
+      desired_acc = a_max if err > 0.0 else -a_max
+
+    # jerk limit (clamp change in accel)
+    max_acc_delta = j_max * dt
+    desired_acc = np.clip(desired_acc, self.acc_cmd - max_acc_delta, self.acc_cmd + max_acc_delta)
+
+    # integrate; clamp rate
+    self.acc_cmd = desired_acc
+    self.vel_cmd += self.acc_cmd * dt
+    self.vel_cmd = np.clip(self.vel_cmd, -v_max, v_max)
+
+    proposed_angle = self.angle_cmd + self.vel_cmd * dt
+
+    # optional extra guard: nested SteerRateLimiter (redundant but safe)
+    if self._rl:
+      angle_delta_lim = v_max * dt  # hard per-step bound
+      # Feed target=proposed, RL will limit step from its last apply
+      applied = self._rl.update(proposed_angle, angle_delta_lim)
+      self.angle_cmd = applied
+    else:
+      self.angle_cmd = proposed_angle
+
+    if snap:
+      new_err = target_angle - self.angle_cmd
+      if (err > 0.0 and new_err <= 0.0) or (err < 0.0 and new_err >= 0.0):
+        # crossed target — snap and zero dynamics
+        self.angle_cmd = target_angle
+        self.vel_cmd = 0.0
+        self.acc_cmd = 0.0
+        if self._rl:
+          self._rl.reset(self.angle_cmd)
+
+    return self.angle_cmd
 
 
 class AngleSlew:
@@ -261,9 +406,9 @@ class CoopSteeringCarController:
               [driverTorque, apply_bounds(driverTorque, STEER_OVERRIDE_MIN_TORQUE)])
 
     # torque biasing emulates the steering centering when released:
-    if self.override_angle_accu > 0 and abs(vEgo) > 0.1:
+    if self.override_angle_accu > 0:# and abs(vEgo) > 0.1:
       torque_biased = driverTorque - STEER_OVERRIDE_MIN_TORQUE
-    elif self.override_angle_accu < 0 and abs(vEgo) > 0.1:
+    elif self.override_angle_accu < 0:# and abs(vEgo) > 0.1: #! heyyyyyyyyyyyyy
       torque_biased = driverTorque + STEER_OVERRIDE_MIN_TORQUE
     else:
       torque_biased = apply_deadzone(driverTorque, STEER_OVERRIDE_MIN_TORQUE)
