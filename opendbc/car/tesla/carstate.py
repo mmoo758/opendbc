@@ -47,8 +47,8 @@ class CarState(CarStateBase, CarStateExt):
     ret.gasPressed = cp_party.vl["DI_systemStatus"]["DI_accelPedalPos"] > 0
 
     # Brake pedal
-    ret.brake = 0
-    ret.brakePressed = cp_party.vl["IBST_status"]["IBST_driverBrakeApply"] == 2
+    ret.brake = cp_party.vl["IBST_status_new"]["BrakeValue"]
+    ret.brakePressed = cp_party.vl["ESP_status"]["ESP_driverBrakeApply"] == 2
 
     # Steering wheel
     epas_status = cp_party.vl["EPAS3S_sysStatus"]
@@ -66,7 +66,7 @@ class CarState(CarStateBase, CarStateExt):
 
     # FSD disengages using union of handsOnLevel (slow overrides) and high angle rate faults (fast overrides, high speed)
     eac_error_code = self.can_define.dv["EPAS3S_sysStatus"]["EPAS3S_eacErrorCode"].get(int(epas_status["EPAS3S_eacErrorCode"]), None)
-    ret.steeringDisengage = self.hands_on_level >= 3 or (eac_status == "EAC_INHIBITED" and
+    ret.steeringDisengage = self.hands_on_level >= 2 or (eac_status == "EAC_INHIBITED" and
                                                          eac_error_code == "EAC_ERROR_HIGH_ANGLE_RATE_SAFETY")
 
     # Cruise state
