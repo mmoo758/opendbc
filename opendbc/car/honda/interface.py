@@ -290,6 +290,8 @@ class CarInterface(CarInterfaceBase):
         stock_cp.lateralParams.torqueBP, stock_cp.lateralParams.torqueV = [[0, 2560], [0, 2560]]
         stock_cp.lateralTuning.pid.kpV, stock_cp.lateralTuning.pid.kiV = [[0.8], [0.24]]
 
+    ret.intelligentCruiseButtonManagementAvailable = candidate in HONDA_BOSCH
+
     return ret
 
   @staticmethod
