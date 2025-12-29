@@ -9,19 +9,17 @@ import numpy as np
 from collections import namedtuple
 from dataclasses import replace
 
-from opendbc.car import structs, rate_limit, DT_CTRL, ACCELERATION_DUE_TO_GRAVITY
+from opendbc.car import structs, rate_limit, DT_CTRL
 from opendbc.car.vehicle_model import VehicleModel
 from opendbc.car.lateral import apply_steer_angle_limits_vm
-from opendbc.car.tesla.values import CarControllerParams, AVERAGE_ROAD_ROLL
+from opendbc.car.tesla.values import CarControllerParams
 from opendbc.sunnypilot.car.tesla.values import TeslaFlagsSP
 
 
 DT_LAT_CTRL = DT_CTRL * CarControllerParams.STEER_STEP
 
 class CoopSteeringCarControllerParams(CarControllerParams):
-    ANGLE_LIMITS = replace(CarControllerParams.ANGLE_LIMITS,
-                          MAX_ANGLE_RATE = 5.0,
-                          MAX_LATERAL_JERK = 5.0 + (ACCELERATION_DUE_TO_GRAVITY * AVERAGE_ROAD_ROLL)) # Increased from default 3.6 to 5.6 m/s³
+  ANGLE_LIMITS = replace(CarControllerParams.ANGLE_LIMITS, MAX_ANGLE_RATE=5)
 
 STEERING_DEG_PHASE_LEAD_COEFF = 8.0
 
