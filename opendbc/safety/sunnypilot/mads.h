@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "opendbc/safety/sunnypilot/safety_mads_declarations.h"
+#include "opendbc/safety/sunnypilot/mads_declarations.h"
 
 // ===============================
 // Global Variables
@@ -75,7 +75,7 @@ inline void m_update_binary_state(BinaryStateTracking *state) {
 
 /**
  * @brief Updates the MADS control state based on current system conditions
- *
+ * 
  * @return void
  */
 inline void m_update_control_state(void) {
