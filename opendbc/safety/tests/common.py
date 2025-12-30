@@ -897,13 +897,12 @@ class SafetyTest(SafetyTestBase):
               continue
             if {attr, current_test}.issubset({'TestHyundaiLongitudinalSafety', 'TestHyundaiLongitudinalSafetyCameraSCC', 'TestHyundaiSafetyFCEVLong'}):
               continue
-
             base_tests = {'TestHyundaiLongitudinalSafety', 'TestHyundaiLongitudinalSafetyCameraSCC', 'TestHyundaiSafetyFCEVLong',
                           'TestHyundaiLongitudinalESCCSafety'}
             if any(attr.startswith(test) for test in base_tests) and any(current_test.startswith(test) for test in base_tests):
               continue
-
-            if {attr, current_test}.issubset({'TestVolkswagenMqbSafety', 'TestVolkswagenMqbStockSafety', 'TestVolkswagenMqbLongSafety'}):
+            volkswagen_shared = ('TestVolkswagenMqb', 'TestVolkswagenMlb')
+            if attr.startswith(volkswagen_shared) and current_test.startswith(volkswagen_shared):
               continue
 
             # overlapping TX addrs, but they're not actuating messages for either car
