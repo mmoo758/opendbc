@@ -4,10 +4,11 @@ from opendbc.can import CANPacker
 from opendbc.car import Bus, DT_CTRL, rate_limit, make_tester_present_msg, structs
 from opendbc.car.honda import hondacan
 from opendbc.car.honda.values import CAR, CruiseButtons, HONDA_BOSCH, HONDA_BOSCH_CANFD, HONDA_BOSCH_RADARLESS, \
-                                     HONDA_NIDEC_ALT_PCM_ACCEL, CarControllerParams
+                                     HONDA_BOSCH_TJA_CONTROL, HONDA_NIDEC_ALT_PCM_ACCEL, CarControllerParams
 from opendbc.car.interfaces import CarControllerBase
 
 from opendbc.sunnypilot.car.honda.mads import MadsCarController
+from opendbc.sunnypilot.car.honda.icbm import IntelligentCruiseButtonManagementInterface
 
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
 LongCtrlState = structs.CarControl.Actuators.LongControlState
@@ -90,13 +91,15 @@ def process_hud_alert(hud_alert):
   return alert_fcw, alert_steer_required
 
 
-class CarController(CarControllerBase, MadsCarController):
+class CarController(CarControllerBase, MadsCarController, IntelligentCruiseButtonManagementInterface):
   def __init__(self, dbc_names, CP, CP_SP):
     CarControllerBase.__init__(self, dbc_names, CP, CP_SP)
     MadsCarController.__init__(self)
+    IntelligentCruiseButtonManagementInterface.__init__(self, CP, CP_SP)
     self.packer = CANPacker(dbc_names[Bus.pt])
     self.params = CarControllerParams(CP)
     self.CAN = hondacan.CanBus(CP)
+    self.tja_control = CP.carFingerprint in HONDA_BOSCH_TJA_CONTROL
 
     self.braking = False
     self.brake_steady = 0.
@@ -155,7 +158,7 @@ class CarController(CarControllerBase, MadsCarController):
         can_sends.append(make_tester_present_msg(0x18DAB0F1, 1, suppress_response=True))
 
     # Send steering command.
-    can_sends.append(hondacan.create_steering_control(self.packer, self.CAN, apply_torque, CC.latActive))
+    can_sends.append(hondacan.create_steering_control(self.packer, self.CAN, apply_torque, CC.latActive, self.tja_control))
 
     # wind brake from air resistance decel at high speed
     wind_brake = np.interp(CS.out.vEgo, [0.0, 2.3, 35.0], [0.001, 0.002, 0.15])
@@ -241,6 +244,10 @@ class CarController(CarControllerBase, MadsCarController):
         if self.CP.carFingerprint not in HONDA_BOSCH:
           self.speed = pcm_speed
           self.gas = pcm_accel / self.params.NIDEC_GAS_MAX
+
+    # Intelligent Cruise Button Management
+    can_sends.extend(IntelligentCruiseButtonManagementInterface.update(self, CC_SP, self.packer, self.frame,
+                                                                       self.last_button_frame, self.CAN))
 
     new_actuators = actuators.as_builder()
     new_actuators.speed = self.speed

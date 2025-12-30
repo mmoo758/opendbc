@@ -78,6 +78,7 @@ class HondaFlags(IntFlag):
   BOSCH_ALT_RADAR = 512
   ALLOW_MANUAL_TRANS = 1024
   HYBRID = 2048
+  BOSCH_TJA_CONTROL = 4096
 
 
 # Car button codes
@@ -173,6 +174,7 @@ class CAR(Platforms):
     # steerRatio: 11.82 is spec end-to-end
     CarSpecs(mass=3279 * CV.LB_TO_KG, wheelbase=2.83, steerRatio=16.33, centerToFrontRatio=0.39, tireStiffnessFactor=0.8467),
     {Bus.pt: 'honda_civic_hatchback_ex_2017_can_generated'},
+    flags=HondaFlags.ALLOW_MANUAL_TRANS,
   )
   HONDA_ACCORD_11G = HondaBoschCANFDPlatformConfig(
     [
@@ -199,7 +201,7 @@ class CAR(Platforms):
   HONDA_CIVIC_2022 = HondaBoschPlatformConfig(
     [
       HondaCarDocs("Honda Civic 2022-24", "All", video="https://youtu.be/ytiOT5lcp6Q"),
-      HondaCarDocs("Honda Civic Hybrid 2025", "All"),
+      HondaCarDocs("Honda Civic Hybrid 2025-26", "All"),
       HondaCarDocs("Honda Civic Hatchback 2022-24", "All", video="https://youtu.be/ytiOT5lcp6Q"),
       HondaCarDocs("Honda Civic Hatchback Hybrid (Europe only) 2023", "All"),
       # TODO: Confirm 2024
@@ -218,7 +220,7 @@ class CAR(Platforms):
   )
   HONDA_CRV_6G = HondaBoschCANFDPlatformConfig(
     [
-      HondaCarDocs("Honda CR-V 2023-25", "All"),
+      HondaCarDocs("Honda CR-V 2023-26", "All"),
       HondaCarDocs("Honda CR-V Hybrid 2023-25", "All"),
     ],
     CarSpecs(mass=1703, wheelbase=2.7, steerRatio=16.2, centerToFrontRatio=0.42),
@@ -372,6 +374,7 @@ HONDA_BOSCH = CAR.with_flags(HondaFlags.BOSCH)
 HONDA_BOSCH_RADARLESS = CAR.with_flags(HondaFlags.BOSCH_RADARLESS)
 HONDA_BOSCH_CANFD = CAR.with_flags(HondaFlags.BOSCH_CANFD)
 HONDA_BOSCH_ALT_RADAR = CAR.with_flags(HondaFlags.BOSCH_ALT_RADAR)
+HONDA_BOSCH_TJA_CONTROL = CAR.with_flags(HondaFlags.BOSCH_TJA_CONTROL)
 
 
 DBC = CAR.create_dbc_map()
