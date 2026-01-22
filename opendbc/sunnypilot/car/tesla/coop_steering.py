@@ -238,6 +238,9 @@ class CoopSteeringCarController:
     """
     Emulates steering springiness based on lateral acceleration exerted on the steering rack.
     We rely on apply_override_angle_ramp to reach the max angle at low speeds.
+    At low speed lateral acceleration approaches infinity and it is not good proxy
+    for the torque to target angle conversion and needs to be limited
+
     """
     if not lat_active:
       return 0.0
@@ -250,16 +253,16 @@ class CoopSteeringCarController:
 
   def apply_override_angle_relative(self, lat_active: bool, lkas_enabled: bool, driverTorque: float, vEgo: float, VM: VehicleModel) -> float:
     """
-    Emulates steering rotation for low speed when steering resistance due to lateral acceleration is not well defined.
-    Physically torque to angle rate corresponds to viscous damping of the wheels on the ground.
-    However here lateral jerk limit is used as a proxy for estimating reasonable safe steering angle rate depending on the vehicle speed.
-    Ramp maximum angle is limited according to lateral acceleration limits.
+    Converts steering torque to steering rotation rate.
+    Physically angle rate is related to viscous damping of tires rotating on the ground.
+    Here, however, the angle rate target is obtained from lateral jerk limit
+    as a reasonable safe rate which decays quadratically with vehicle speed.
     """
     if not lat_active:
       self.override_angle_accu = 0
       return 0
 
-    # unwind accumulator if total angle exceeded hard limits in previous loop
+    # unwind accumulator if total angle exceeded hard limits from the previous loop (apply_steer_angle_limits_vm)
     self.override_angle_accu -= self.coop_apply_angle_last - self.coop_apply_angle_last_sat
 
     # disable ramping at high speed -
@@ -293,10 +296,10 @@ class CoopSteeringCarController:
 
     return self.override_angle_accu
 
-  def apply_override_angle_fused(self, lat_active: bool, lkas_enabled: bool, driverTorque: float, vEgo: float, VM: VehicleModel) -> float:
+  def apply_override_angle_combined(self, lat_active: bool, lkas_enabled: bool, driverTorque: float, vEgo: float, VM: VehicleModel) -> float:
     """
-    Effectively vehicle-speed based blending. -
-    Blends direct and relative override angles based on direct angle override limitations (stability and practical range depending on vehicle speed).
+    Combines direct and relative override angles based on direct angle override limitations (stability and practical range depending on vehicle speed).
+    Effectively vehicle-speed based transition.
     """
     if not lat_active:
       return 0
@@ -378,7 +381,7 @@ class CoopSteeringCarController:
       if low_speed_pause_enabled:
         apply_angle += self.apply_override_angle_direct(lat_active, CS.out.steeringTorque, CS.out.vEgo, VM)
       else:
-        apply_angle += self.apply_override_angle_fused(lat_active, lkas_enabled, CS.out.steeringTorque, CS.out.vEgo, VM)
+        apply_angle += self.apply_override_angle_combined(lat_active, lkas_enabled, CS.out.steeringTorque, CS.out.vEgo, VM)
 
       if lkas_enabled:  # apply LKAS compensation to angle override
         apply_angle = lkas_compensation(apply_angle, self.coop_apply_angle_last, steeringAngleDegPhaseLead,
