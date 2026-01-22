@@ -100,6 +100,8 @@ class CarInterfaceBase(ABC, CarInterfaceBaseSP):
   CarController: type['CarControllerBase']
   RadarInterface: type['RadarInterfaceBase'] = RadarInterfaceBase
 
+  DRIVABLE_GEARS: tuple[structs.CarState.GearShifter, ...] = ()
+
   def __init__(self, CP: structs.CarParams, CP_SP: structs.CarParamsSP):
     self.CP = CP
     self.CP_SP = CP_SP
