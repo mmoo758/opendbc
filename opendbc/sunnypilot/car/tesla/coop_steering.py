@@ -251,7 +251,8 @@ class CoopSteeringCarController:
     angle_override = calc_override_angle_limited(steering_torque_with_deadzone, vEgo, VM, STEER_OVERRIDE_MAX_LAT_ACCEL)
     return angle_override
 
-  def apply_override_angle_relative(self, lat_active: bool, lkas_enabled: bool, driverTorque: float, vEgo: float, VM: VehicleModel) -> float:
+  def apply_override_angle_relative(self, lat_active: bool, lkas_enabled: bool, driverTorque: float, vEgo: float,
+                                    VM: VehicleModel, unwind_weight: float = 1.0) -> float:
     """
     Converts steering torque to steering rotation rate.
     Physically angle rate is related to viscous damping of tires rotating on the ground.
@@ -262,8 +263,11 @@ class CoopSteeringCarController:
       self.override_angle_accu = 0
       return 0
 
-    # unwind accumulator if total angle exceeded hard limits from the previous loop (apply_steer_angle_limits_vm)
-    self.override_angle_accu -= self.coop_apply_angle_last - self.coop_apply_angle_last_sat
+    # unwind accumulator toward zero if the previous loop saturated (apply_steer_angle_limits_vm)
+    unwind = (self.coop_apply_angle_last - self.coop_apply_angle_last_sat) * unwind_weight
+    if self.override_angle_accu * unwind > 0:
+      unwind = apply_bounds(unwind, abs(self.override_angle_accu))
+      self.override_angle_accu -= unwind
 
     # disable ramping at high speed -
     # prevents large slow swings due to LKAS reducing input resistance when target is off center;
@@ -309,9 +313,11 @@ class CoopSteeringCarController:
                    get_steer_from_lat_accel(STEER_OVERRIDE_MAX_LAT_ACCEL, vEgo, VM))
 
     angle_override_direct = self.apply_override_angle_direct(lat_active, driverTorque, vEgo, VM)
-    angle_override_relative = self.apply_override_angle_relative(lat_active, lkas_enabled, driverTorque, vEgo, VM)
+    relative_weight = 1.0 - direct_override_capability
+    angle_override_relative = self.apply_override_angle_relative(lat_active, lkas_enabled, driverTorque, vEgo, VM,
+                                                                 unwind_weight=relative_weight)
 
-    return angle_override_direct * direct_override_capability + angle_override_relative * (1.0 - direct_override_capability)
+    return angle_override_direct * direct_override_capability + angle_override_relative * relative_weight
 
   def overriding_steer_desired_accel_limit(self, lat_active: bool, apply_angle: float, vEgo: float, steeringTorque: float) -> float:
     """
@@ -375,7 +381,7 @@ class CoopSteeringCarController:
     apply_angle = self.resume_steer_desired_rate_limit(lat_active, apply_angle, steeringAngleDegPhaseLead)
 
     if angle_coop_enabled:
-      apply_angle = self.overriding_steer_desired_accel_limit(lat_active, apply_angle, CS.out.vEgo, CS.out.steeringTorque)
+      # apply_angle = self.overriding_steer_desired_accel_limit(lat_active, apply_angle, CS.out.vEgo, CS.out.steeringTorque)
       self.debug_angle_desired_limited = apply_angle #! debug
 
       if low_speed_pause_enabled:
