@@ -28,8 +28,9 @@ class TeslaCAN:
 
     return self.packer.make_can_msg("DAS_steeringControl", CANBUS.party, values)
 
-  def create_longitudinal_command(self, acc_state, accel, counter, v_ego, a_ego, active):
-
+  def create_longitudinal_command(self, acc_state, accel, counter, v_ego, a_ego, active, gas_pressed):
+    if gas_pressed:
+      accel = max(accel, a_ego)
     set_speed = max((v_ego + accel if active else a_ego) * CV.MS_TO_KPH, 0)
 
     values = {
