@@ -17,3 +17,4 @@ class ToyotaFlagsSP(IntFlag):
 class ToyotaSafetyFlagsSP:
   DEFAULT = 0
   UNSUPPORTED_DSU = 1
+  GAS_INTERCEPTOR = 2

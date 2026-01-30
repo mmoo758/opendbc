@@ -9,7 +9,7 @@ uint32_t microsecond_timer_get(void) {
   return timer_cnt;
 }
 
-#include "opendbc/safety/board/can.h"
+#include "opendbc/safety/can.h"
 #include "opendbc/safety/safety.h"
 
 void safety_tick_current_safety_config() {
@@ -283,9 +283,9 @@ void set_steering_disengage(bool c){
   steering_disengage = c;
 }
 
-// int get_gas_interceptor_prev(void){
-//   return gas_interceptor_prev;
-// }
+int get_gas_interceptor_prev(void){
+  return gas_interceptor_prev;
+}
 
 void init_tests(void){
   safety_mode_cnt = 2U;  // avoid ignoring relay_malfunction logic
