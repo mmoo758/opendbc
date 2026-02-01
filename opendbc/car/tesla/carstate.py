@@ -20,6 +20,7 @@ class CarState(CarStateBase, CarStateExt):
 
     self.summon = False
     self.summon_prev = False
+    self.cruise_active = False
     self.cruise_enabled_prev = False
 
     self.hands_on_level = 0
@@ -43,6 +44,13 @@ class CarState(CarStateBase, CarStateExt):
     # Vehicle speed
     ret.vEgoRaw = cp_party.vl["DI_speed"]["DI_vehicleSpeed"] * CV.KPH_TO_MS
     ret.vEgo, ret.aEgo = self.update_speed_kf(ret.vEgoRaw)
+
+    # Displayed speed
+    ui_speed_units = self.can_define.dv["DI_speed"]["DI_uiSpeedUnits"].get(int(cp_party.vl["DI_speed"]["DI_uiSpeedUnits"]), None)
+    if ui_speed_units == "KPH":
+      ret.vEgoCluster = cp_party.vl["DI_speed"]["DI_uiSpeed"] * CV.KPH_TO_MS
+    elif ui_speed_units == "MPH":
+      ret.vEgoCluster = cp_party.vl["DI_speed"]["DI_uiSpeed"] * CV.MPH_TO_MS
 
     # Gas pedal
     ret.gasPressed = cp_party.vl["DI_systemStatus"]["DI_accelPedalPos"] > 0
@@ -77,6 +85,7 @@ class CarState(CarStateBase, CarStateExt):
     # DI_autoparkState is used by Summon, not autopark (which uses DAS_autopilotState = ACTIVE_AUTOPARK)
     summon_state = self.can_define.dv["DI_state"]["DI_autoparkState"].get(int(cp_party.vl["DI_state"]["DI_autoparkState"]), None)
     cruise_enabled = cruise_state in ("ENABLED", "STANDSTILL", "OVERRIDE", "PRE_FAULT", "PRE_CANCEL")
+    self.cruise_active = cruise_state in ("ENABLED")
     self.update_summon_state(summon_state, cruise_enabled)
 
     # Match panda safety cruise engaged logic
