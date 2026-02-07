@@ -201,11 +201,6 @@ static void tesla_rx_hook(const CANPacket_t *msg) {
     if (msg->addr == 0x155U) {
       vehicle_moving = !GET_BIT(msg, 41U);  // ESP_vehicleStandstillSts
     }
-
-    if (msg->addr == 0x311U) {
-      bool scroll_pressed = GET_BIT(msg, 21U); // scrollWheelPressed
-      mads_button_press = (scroll_pressed && brake_pressed) ? MADS_BUTTON_PRESSED : MADS_BUTTON_NOT_PRESSED;
-    }
   }
 
   if (msg->bus == 1U) {
@@ -243,7 +238,7 @@ static bool tesla_tx_hook(const CANPacket_t *msg) {
   const AngleSteeringLimits TESLA_STEERING_LIMITS = {
     .max_angle = 3600,  // 360 deg, EPAS faults above this
     .angle_deg_to_can = 10,
-    .frequency = 50U,
+    .frequency = 100U,
   };
 
   // NOTE: based off TESLA_MODEL_Y to match openpilot

@@ -17,10 +17,10 @@ def get_safety_CP():
   return CarInterface.get_non_essential_params("TESLA_MODEL_Y")
 
 
-class CarController(CarControllerBase):
+class CarController(CarControllerBase, CoopSteeringCarController):
   def __init__(self, dbc_names, CP, CP_SP):
     CarControllerBase.__init__(self, dbc_names, CP, CP_SP)
-    self.coop_steer = CoopSteeringCarController()
+    CoopSteeringCarController.__init__(self)
     self.apply_angle_last = 0
     self.packer = CANPacker(dbc_names[Bus.party])
     self.tesla_can = TeslaCAN(CP, self.packer)
@@ -49,7 +49,7 @@ class CarController(CarControllerBase):
       self.apply_angle_last = apply_steer_angle_limits_vm(mapped_angle, self.apply_angle_last, CS.out.vEgoRaw, CS.out.steeringAngleDeg,
                                                           lat_active, CarControllerParams, self.VM)
 
-      can_sends.append(self.tesla_can.create_steering_control(*self.coop_steer.update(self.apply_angle_last, lat_active, self.CP_SP, CS, self.VM)))
+      can_sends.append(self.tesla_can.create_steering_control(*CoopSteeringCarController.update(self, self.apply_angle_last, lat_active, self.CP_SP, CS)))
 
     if self.frame % 10 == 0:
       can_sends.append(self.tesla_can.create_steering_allowed())
@@ -60,20 +60,20 @@ class CarController(CarControllerBase):
         state = 13 if CC.cruiseControl.cancel else 4  # 4=ACC_ON, 13=ACC_CANCEL_GENERIC_SILENT
         accel = float(np.clip(actuators.accel, CarControllerParams.ACCEL_MIN, CarControllerParams.ACCEL_MAX))
         cntr = (self.frame // 4) % 8
-        can_sends.append(self.tesla_can.create_longitudinal_command(state, accel, cntr, CS.out.vEgo, CS.out.aEgo, CC.longActive, CS.out.gasPressed))
+        can_sends.append(self.tesla_can.create_longitudinal_command(state, accel, cntr, CS.out.vEgo, CC.longActive))
 
     else:
       # Increment counter so cancel is prioritized even without openpilot longitudinal
       if CC.cruiseControl.cancel:
         cntr = (CS.das_control["DAS_controlCounter"] + 1) % 8
-        can_sends.append(self.tesla_can.create_longitudinal_command(13, 0, cntr, CS.out.vEgo, CS.out.aEgo, False, CS.out.gasPressed))
+        can_sends.append(self.tesla_can.create_longitudinal_command(13, 0, cntr, CS.out.vEgo, False))
 
     # TODO: HUD control
     new_actuators = actuators.as_builder()
     new_actuators.steeringAngleDeg = self.apply_angle_last
-    new_actuators.accel = self.coop_steer.coop_apply_angle_last_sat # debug
-    new_actuators.curvature = float(self.coop_steer.debug_angle_desired_limited) # debug
-    new_actuators.torque = float(self.coop_steer.override_angle_accu) # debug
+    new_actuators.accel = self.coop_steeringAngleDeg # debug
+    new_actuators.curvature = float(self.debug_angle_desired_limited) # debug
+    new_actuators.torque = float(self.override_angle_accu) # debug
 
     self.frame += 1
     return new_actuators, can_sends
