@@ -42,7 +42,7 @@ STEER_RESUME_RATE_LIMIT_RAMP_RATE = 500 # deg/s^2 - controls rate of rise of ang
 
 
 CoopSteeringDataSP = namedtuple("CoopSteeringDataSP",
-                                ["steeringAngleDeg", "lat_active", "control_type"])
+                                ["steeringAngleDeg", "lat_active"])
 
 def get_steer_from_lat_accel(lat_accel, v_ego: float, VM: VehicleModel):
   """Calculate the maximum steering angle based on lateral acceleration."""
@@ -221,9 +221,6 @@ class CoopSteeringCarController:
 
     angle_coop_enabled = CP_SP.flags & TeslaFlagsSP.COOP_STEERING.value
 
-    # 1 = angle control, 2 = LKAS mode
-    control_type = 1
-
     # avoid sudden rotation on engagement
     apply_angle = self.resume_steer_desired_rate_limit(lat_active, apply_angle, steeringAngleDegPhaseLead)
 
@@ -237,4 +234,4 @@ class CoopSteeringCarController:
     self.coop_apply_angle_last_sat = apply_steer_angle_limits_vm(apply_angle, self.coop_apply_angle_last_sat, CS.out.vEgoRaw,
                                                     CS.out.steeringAngleDeg, lat_active, CoopSteeringCarControllerParams, VM)
 
-    return CoopSteeringDataSP(self.coop_apply_angle_last_sat, lat_active, control_type)
+    return CoopSteeringDataSP(self.coop_apply_angle_last_sat, lat_active)
