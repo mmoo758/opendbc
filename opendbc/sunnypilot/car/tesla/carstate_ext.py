@@ -65,8 +65,6 @@ class CarStateExt(CoopSteeringCarState):
     self.gas_combo_prev = gas_combo
     self.brake_combo_prev = brake_combo
 
-
-
   @staticmethod
   def get_parser(CP: structs.CarParams, CP_SP: structs.CarParamsSP) -> dict[StrEnum, CANParser]:
     messages = {}

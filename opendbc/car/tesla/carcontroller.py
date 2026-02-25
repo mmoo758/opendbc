@@ -7,7 +7,6 @@ from opendbc.car.tesla.teslacan import TeslaCAN
 from opendbc.car.tesla.values import CarControllerParams
 from opendbc.car.vehicle_model import VehicleModel
 from opendbc.sunnypilot.car.tesla.coop_steering import CoopSteeringCarController
-from opendbc.sunnypilot.car.tesla.values import TeslaAngleMap
 
 
 def get_safety_CP():
@@ -38,15 +37,8 @@ class CarController(CarControllerBase):
     lat_active = CC.latActive and CS.hands_on_level < 3
 
     if self.frame % CarControllerParams.STEER_STEP == 0:
-      # Before 2024, model 3 had a constant steering rack ratio in respect to the steering angle.
-      # Hypothesis is that most other cars have variable ratio and AI model learnt to compensate for faster ratio away from the center.
-      # Emulate non-constant steering ratio to match other cars:
-      mapped_angle = np.interp(abs(actuators.steeringAngleDeg), TeslaAngleMap.XP, TeslaAngleMap.YP)
-      if actuators.steeringAngleDeg < 0:
-        mapped_angle = -mapped_angle
-
       # Angular rate limit based on speed
-      self.apply_angle_last = apply_steer_angle_limits_vm(mapped_angle, self.apply_angle_last, CS.out.vEgoRaw, CS.out.steeringAngleDeg,
+      self.apply_angle_last = apply_steer_angle_limits_vm(actuators.steeringAngleDeg, self.apply_angle_last, CS.out.vEgoRaw, CS.out.steeringAngleDeg,
                                                           lat_active, CarControllerParams, self.VM)
 
       can_sends.append(self.tesla_can.create_steering_control(*self.coop_steer.update(self.apply_angle_last, lat_active, self.CP_SP, CS, self.VM)))
@@ -60,13 +52,13 @@ class CarController(CarControllerBase):
         state = 13 if CC.cruiseControl.cancel else 4  # 4=ACC_ON, 13=ACC_CANCEL_GENERIC_SILENT
         accel = float(np.clip(actuators.accel, CarControllerParams.ACCEL_MIN, CarControllerParams.ACCEL_MAX))
         cntr = (self.frame // 4) % 8
-        can_sends.append(self.tesla_can.create_longitudinal_command(state, accel, cntr, CS.out.vEgo, CS.cruise_active, CS.out.gasPressed))
+        can_sends.append(self.tesla_can.create_longitudinal_command(state, accel, cntr, CS.out.vEgo, CS.cruise_active, CS.gas_pedal))
 
     else:
       # Increment counter so cancel is prioritized even without openpilot longitudinal
       if CC.cruiseControl.cancel:
         cntr = (CS.das_control["DAS_controlCounter"] + 1) % 8
-        can_sends.append(self.tesla_can.create_longitudinal_command(13, 0, cntr, CS.out.vEgo, False, CS.out.gasPressed))
+        can_sends.append(self.tesla_can.create_longitudinal_command(13, 0, cntr, CS.out.vEgo, False, CS.gas_pedal))
 
     # TODO: HUD control
     new_actuators = actuators.as_builder()

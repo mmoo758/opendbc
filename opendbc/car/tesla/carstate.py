@@ -28,6 +28,7 @@ class CarState(CarStateBase, CarStateExt):
 
     self.hands_on_level = 0
     self.das_control = None
+    self.gas_pedal = 0.0
 
   def update_summon_state(self, summon_state: str, cruise_enabled: bool):
     summon_now = summon_state in ("ACTIVE", "COMPLETE", "SELFPARK_STARTED")
@@ -56,7 +57,8 @@ class CarState(CarStateBase, CarStateExt):
       ret.vEgoCluster = cp_party.vl["DI_speed"]["DI_uiSpeed"] * CV.MPH_TO_MS
 
     # Gas pedal
-    ret.gasPressed = cp_party.vl["DI_systemStatus"]["DI_accelPedalPos"] > 0
+    self.gas_pedal = min(cp_party.vl["DI_systemStatus"]["DI_accelPedalPos"], 100) / 100.0
+    ret.gasPressed = self.gas_pedal > 0
 
     # Brake pedal
     ret.brake = 0
@@ -94,9 +96,11 @@ class CarState(CarStateBase, CarStateExt):
     # Match panda safety cruise engaged logic
     ret.cruiseState.enabled = cruise_enabled and not self.summon
     if speed_units == "KPH":
-      ret.cruiseState.speed = max(cp_party.vl["DI_state"]["DI_digitalSpeed"] * CV.KPH_TO_MS, 1e-3)
+      ret.cruiseState.speedCluster = max(cp_party.vl["DI_state"]["DI_digitalSpeed"] * CV.KPH_TO_MS, 1e-3)
     elif speed_units == "MPH":
-      ret.cruiseState.speed = max(cp_party.vl["DI_state"]["DI_digitalSpeed"] * CV.MPH_TO_MS, 1e-3)
+      ret.cruiseState.speedCluster = max(cp_party.vl["DI_state"]["DI_digitalSpeed"] * CV.MPH_TO_MS, 1e-3)
+    # add negative bias to avoid speedometer appearing above the set max when cruising
+    ret.cruiseState.speed = max(ret.cruiseState.speedCluster - 0.6 * CV.KPH_TO_MS, 1e-3)
     ret.cruiseState.available = cruise_state == "STANDBY" or ret.cruiseState.enabled
     ret.cruiseState.standstill = False  # This needs to be false, since we can resume from stop without sending anything special
     ret.standstill = cp_party.vl["ESP_B"]["ESP_vehicleStandstillSts"] == 1
