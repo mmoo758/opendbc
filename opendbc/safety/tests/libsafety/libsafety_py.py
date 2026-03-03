@@ -100,7 +100,6 @@ void set_mads_params(bool enable_mads, bool disengage_lateral_on_brake, bool pau
 void set_heartbeat_engaged_mads(bool c);
 void mads_heartbeat_engaged_check(void);
 void set_steering_disengage(bool c);
-int get_gas_interceptor_prev(void);
 """)
 
 class LibSafety:

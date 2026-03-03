@@ -16,9 +16,10 @@
 #define GM_EV_COMMON_ADDR_CHECK \
   {.msg = {{0xBD, 0, 7, 40U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
 
-#define GM_NON_ACC_ADDR_CHECK \
-  {.msg = {{0x3D1, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
-
+/*
+ #define GM_NON_ACC_ADDR_CHECK \
+   {.msg = {{0x3D1, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
+*/
 static const LongitudinalLimits *gm_long_limits;
 
 enum {
@@ -34,7 +35,7 @@ typedef enum {
 } GmHardware;
 static GmHardware gm_hw = GM_ASCM;
 static bool gm_pcm_cruise = false;
-static bool gm_non_acc = false;
+// static bool gm_non_acc = false;
 
 static void gm_rx_hook(const CANPacket_t *msg) {
   const int GM_STANDSTILL_THRSLD = 10;  // 0.311kph
@@ -87,7 +88,8 @@ static void gm_rx_hook(const CANPacket_t *msg) {
       gas_pressed = msg->data[5] != 0U;
 
       // enter controls on rising edge of ACC, exit controls when ACC off
-      if (gm_pcm_cruise && !gm_non_acc) {
+      // if (gm_pcm_cruise && !gm_non_acc) {
+      if (gm_pcm_cruise) {
         bool cruise_engaged = (msg->data[1] >> 5) != 0U;
         pcm_cruise_check(cruise_engaged);
       }
@@ -211,16 +213,16 @@ static safety_config gm_init(uint16_t param) {
     GM_EV_COMMON_ADDR_CHECK
   };
 
-  static RxCheck gm_non_acc_rx_checks[] = {
-    GM_COMMON_RX_CHECKS
-    GM_NON_ACC_ADDR_CHECK
-  };
+  // static RxCheck gm_non_acc_rx_checks[] = {
+  //   GM_COMMON_RX_CHECKS
+  //   GM_NON_ACC_ADDR_CHECK
+  // };
 
-  static RxCheck gm_non_acc_ev_rx_checks[] = {
-    GM_COMMON_RX_CHECKS
-    GM_EV_COMMON_ADDR_CHECK
-    GM_NON_ACC_ADDR_CHECK
-  };
+  // static RxCheck gm_non_acc_ev_rx_checks[] = {
+  //   GM_COMMON_RX_CHECKS
+  //   GM_EV_COMMON_ADDR_CHECK
+  //   GM_NON_ACC_ADDR_CHECK
+  // };
 
   static const CanMsg GM_CAM_TX_MSGS[] = {{0x180, 0, 4, .check_relay = true},  // pt bus
                                           {0x1E1, 2, 7, .check_relay = false}, {0x184, 2, 8, .check_relay = true}};  // camera bus
@@ -241,8 +243,8 @@ static safety_config gm_init(uint16_t param) {
 #endif
   gm_pcm_cruise = (gm_hw == GM_CAM) && !gm_cam_long;
 
-  const uint16_t GM_PARAM_SP_NON_ACC = 1;
-  gm_non_acc = GET_FLAG(current_safety_param_sp, GM_PARAM_SP_NON_ACC);
+  // const uint16_t GM_PARAM_SP_NON_ACC = 1;
+  // gm_non_acc = GET_FLAG(current_safety_param_sp, GM_PARAM_SP_NON_ACC);
 
   safety_config ret;
   if (gm_hw == GM_CAM) {
@@ -259,14 +261,14 @@ static safety_config gm_init(uint16_t param) {
     SET_RX_CHECKS(gm_ev_rx_checks, ret);
   }
 
-  if (gm_non_acc) {
-    SET_TX_MSGS(GM_CAM_TX_MSGS, ret);
-    if (gm_ev) {
-      SET_RX_CHECKS(gm_non_acc_ev_rx_checks, ret);
-    } else {
-      SET_RX_CHECKS(gm_non_acc_rx_checks, ret);
-    }
-  }
+  // if (gm_non_acc) {
+  //   SET_TX_MSGS(GM_CAM_TX_MSGS, ret);
+  //   if (gm_ev) {
+  //     SET_RX_CHECKS(gm_non_acc_ev_rx_checks, ret);
+  //   } else {
+  //     SET_RX_CHECKS(gm_non_acc_rx_checks, ret);
+  //   }
+  // }
 
   // ASCM does not forward any messages
   if (gm_hw == GM_ASCM) {

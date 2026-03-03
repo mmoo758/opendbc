@@ -26,7 +26,11 @@
 #include "opendbc/safety/modes/elm327.h"
 #include "opendbc/safety/modes/body.h"
 #include "opendbc/safety/modes/psa.h"
+
+// CAN-FD only safety modes
+#ifdef CANFD
 #include "opendbc/safety/modes/hyundai_canfd.h"
+#endif
 
 uint32_t GET_BYTES(const CANPacket_t *msg, int start, int len) {
   uint32_t ret = 0U;
@@ -56,8 +60,6 @@ bool vehicle_moving = false;
 bool acc_main_on = false;  // referred to as "ACC off" in ISO 15622:2018
 int cruise_button_prev = 0;
 bool safety_rx_checks_invalid = false;
-bool enable_gas_interceptor = false;
-int gas_interceptor_prev = 0;
 
 // for safety modes with torque steering control
 int desired_torque_last = 0;       // last desired steer torque
@@ -296,6 +298,7 @@ void gen_crc_lookup_table_8(uint8_t poly, uint8_t crc_lut[]) {
   }
 }
 
+#ifdef CANFD
 void gen_crc_lookup_table_16(uint16_t poly, uint16_t crc_lut[]) {
   for (uint16_t i = 0; i < 256U; i++) {
     uint16_t crc = i << 8U;
@@ -309,6 +312,7 @@ void gen_crc_lookup_table_16(uint16_t poly, uint16_t crc_lut[]) {
     crc_lut[i] = crc;
   }
 }
+#endif
 
 // 1Hz safety function called by main. Now just a check for lagging safety messages
 void safety_tick(const safety_config *cfg) {
@@ -345,8 +349,8 @@ static void relay_malfunction_set(void) {
 static void generic_rx_checks(void) {
   gas_pressed_prev = gas_pressed;
 
-  // exit controls on rising edge of brake press
-  if (brake_pressed && (!brake_pressed_prev || vehicle_moving)) {
+  // exit controls on falling edge of brake press
+  if (!brake_pressed && brake_pressed_prev) {
     controls_allowed = false;
   }
   brake_pressed_prev = brake_pressed;
@@ -407,7 +411,9 @@ int set_safety_hooks(uint16_t mode, uint16_t param) {
     {SAFETY_FORD, &ford_hooks},
     {SAFETY_RIVIAN, &rivian_hooks},
     {SAFETY_TESLA, &tesla_hooks},
+#ifdef CANFD
     {SAFETY_HYUNDAI_CANFD, &hyundai_canfd_hooks},
+#endif
 #ifdef ALLOW_DEBUG
     {SAFETY_PSA, &psa_hooks},
     {SAFETY_SUBARU_PREGLOBAL, &subaru_preglobal_hooks},
@@ -441,10 +447,6 @@ int set_safety_hooks(uint16_t mode, uint16_t param) {
   ts_steer_req_mismatch_last = 0;
   valid_steer_req_count = 0;
   invalid_steer_req_count = 0;
-
-  // gas interceptor
-  enable_gas_interceptor = false;
-  gas_interceptor_prev = 0;
 
   // reset samples
   reset_sample(&vehicle_speed);

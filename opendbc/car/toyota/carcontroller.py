@@ -13,7 +13,6 @@ from opendbc.car.toyota.values import CAR, NO_STOP_TIMER_CAR, TSS2_CAR, \
                                         UNSUPPORTED_DSU_CAR
 from opendbc.can import CANPacker
 
-from opendbc.sunnypilot.car.toyota.gas_interceptor import GasInterceptorCarController
 from opendbc.sunnypilot.car.toyota.values import ToyotaFlagsSP
 
 Ecu = structs.CarParams.Ecu
@@ -51,10 +50,9 @@ def get_long_tune(CP, params):
                        rate=1 / (DT_CTRL * 3))
 
 
-class CarController(CarControllerBase, GasInterceptorCarController):
+class CarController(CarControllerBase):
   def __init__(self, dbc_names, CP, CP_SP):
     CarControllerBase.__init__(self, dbc_names, CP, CP_SP)
-    GasInterceptorCarController.__init__(self, CP, CP_SP)
     self.params = CarControllerParams(self.CP)
     self.last_torque = 0
     self.last_angle = 0
@@ -175,7 +173,7 @@ class CarController(CarControllerBase, GasInterceptorCarController):
     # *** gas and brake ***
 
     # on entering standstill, send standstill request for older TSS-P cars that aren't designed to stay engaged at a stop
-    if self.CP.carFingerprint not in NO_STOP_TIMER_CAR or self.CP_SP.enableGasInterceptor:
+    if self.CP.carFingerprint not in NO_STOP_TIMER_CAR:
       if CS.out.standstill and not self.last_standstill and not self.CP_SP.flags & ToyotaFlagsSP.STOP_AND_GO_HACK:
         self.standstill_req = True
       if CS.pcm_acc_status != 8:
@@ -266,7 +264,6 @@ class CarController(CarControllerBase, GasInterceptorCarController):
         elif net_acceleration_request_min > 0.3:
           self.permit_braking = False
 
-        pcm_accel_cmd = pcm_accel_cmd if self.CP.carFingerprint in TSS2_CAR else actuators.accel
         pcm_accel_cmd = float(np.clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX))
 
         main_accel_cmd = 0. if self.CP.flags & ToyotaFlags.SECOC.value else pcm_accel_cmd
@@ -291,8 +288,6 @@ class CarController(CarControllerBase, GasInterceptorCarController):
           can_sends.append(toyotacan.create_acc_cancel_command(self.packer))
         else:
           can_sends.append(toyotacan.create_accel_command(self.packer, 0, pcm_cancel_cmd, True, False, lead, CS.acc_type, False, self.distance_button))
-
-    can_sends.extend(GasInterceptorCarController.create_gas_command(self, CC, CS, actuators, self.packer, self.frame))
 
     # *** hud ui ***
     if self.CP.carFingerprint != CAR.TOYOTA_PRIUS_V:
@@ -325,7 +320,6 @@ class CarController(CarControllerBase, GasInterceptorCarController):
     new_actuators.torqueOutputCan = apply_torque
     new_actuators.steeringAngleDeg = self.last_angle
     new_actuators.accel = self.accel
-    new_actuators.gas = self.gas
 
     self.frame += 1
     return new_actuators, can_sends
