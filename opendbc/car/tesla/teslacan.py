@@ -15,7 +15,7 @@ class TeslaCAN:
     self.CP = CP
     self.packer = packer
 
-  def create_steering_control(self, angle, enabled, control_type):
+  def create_steering_control(self, angle, enabled):
     # On FSD 14+, ANGLE_CONTROL behavior changed to allow user winddown while actuating.
     # with openpilot, after overriding w/ ANGLE_CONTROL the wheel snaps back to the original angle abruptly
     # so we now use LANE_KEEP_ASSIST to match stock FSD.
@@ -23,25 +23,25 @@ class TeslaCAN:
     values = {
       "DAS_steeringAngleRequest": -angle,
       "DAS_steeringHapticRequest": 0,
-      "DAS_steeringControlType": get_steer_ctrl_type(self.CP.flags, control_type if enabled else 0),
+      "DAS_steeringControlType": get_steer_ctrl_type(self.CP.flags, 1 if enabled else 0),
     }
 
     return self.packer.make_can_msg("DAS_steeringControl", CANBUS.party, values)
 
-  def create_longitudinal_command(self, acc_state, accel, counter, v_ego, active):
-    from opendbc.car.interfaces import V_CRUISE_MAX
+  def create_longitudinal_command(self, acc_state, accel, counter, v_ego, active, gas):
 
-    set_speed = max(v_ego * CV.MS_TO_KPH, 0)
-    if active:
-      # TODO: this causes jerking after gas override when above set speed
-      set_speed = 0 if accel < 0 else V_CRUISE_MAX
+    gas_offset = min(max(gas, 0.0), 1.0)
+    set_speed = max((v_ego + (accel if gas_offset == 0.0 else gas_offset)) * CV.MS_TO_KPH, 0)  # add accel offset
+
+    if not active:
+      accel = max(accel, 0)
 
     values = {
       "DAS_setSpeed": set_speed,
       "DAS_accState": acc_state,
       "DAS_aebEvent": 0,
-      "DAS_jerkMin": CarControllerParams.JERK_LIMIT_MIN,
-      "DAS_jerkMax": CarControllerParams.JERK_LIMIT_MAX,
+      "DAS_jerkMin": CarControllerParams.JERK_LIMIT_MIN if active else -0.5,
+      "DAS_jerkMax": CarControllerParams.JERK_LIMIT_MAX if active else 0.5,
       "DAS_accelMin": accel,
       "DAS_accelMax": max(accel, 0),
       "DAS_controlCounter": counter,
