@@ -1,6 +1,6 @@
 import copy
 from opendbc.can import CANDefine, CANParser
-from opendbc.car import Bus, structs
+from opendbc.car import Bus, create_button_events, structs
 from opendbc.car.carlog import carlog
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.interfaces import CarStateBase
@@ -10,6 +10,7 @@ from opendbc.car.tesla.values import DBC, CANBUS, GEAR_MAP, STEER_THRESHOLD, Tes
 from opendbc.sunnypilot.car.tesla.carstate_ext import CarStateExt
 
 ButtonType = structs.CarState.ButtonEvent.Type
+STEERING_KNUCKLE_ARM_LENGTH_M = 0.11
 
 
 class CarState(CarStateBase, CarStateExt):
@@ -21,11 +22,13 @@ class CarState(CarStateBase, CarStateExt):
 
     self.summon = False
     self.summon_prev = False
+    self.cruise_override = False
     self.cruise_enabled_prev = False
     self.fsd14_error_logged = False
     self.suspected_fsd14 = False
 
     self.hands_on_level = 0
+    self.prev_acc_state = 0
     self.das_control = None
 
   def update_summon_state(self, summon_state: str, cruise_enabled: bool):
@@ -68,6 +71,8 @@ class CarState(CarStateBase, CarStateExt):
     ret.steeringAngleDeg = -epas_status["EPAS3S_internalSAS"]
     ret.steeringRateDeg = -cp_ap_party.vl["SCCM_steeringAngleSensor"]["SCCM_steeringAngleSpeed"]
     ret.steeringTorque = -epas_status["EPAS3S_torsionBarTorque"]
+    # Convert rack force to estimated steering-wheel torque using static rack geometry only - as if EPS was not present
+    ret.steeringTorqueEps = -epas_status["EPAS3S_steeringRackForce"] * STEERING_KNUCKLE_ARM_LENGTH_M / self.CP.steerRatio
 
     # stock handsOnLevel uses >0.5 for 0.25s, but is too slow
     ret.steeringPressed = self.update_steering_pressed(abs(ret.steeringTorque) > STEER_THRESHOLD, 5)
@@ -88,6 +93,7 @@ class CarState(CarStateBase, CarStateExt):
     # DI_autoparkState is used by Summon, not autopark (which uses DAS_autopilotState = ACTIVE_AUTOPARK)
     summon_state = self.can_define.dv["DI_state"]["DI_autoparkState"].get(int(cp_party.vl["DI_state"]["DI_autoparkState"]), None)
     cruise_enabled = cruise_state in ("ENABLED", "STANDSTILL", "OVERRIDE", "PRE_FAULT", "PRE_CANCEL")
+    self.cruise_override = cruise_state in ("OVERRIDE")
     self.update_summon_state(summon_state, cruise_enabled)
 
     # Match panda safety cruise engaged logic
@@ -103,6 +109,16 @@ class CarState(CarStateBase, CarStateExt):
     ret.cruiseState.standstill = False  # This needs to be false, since we can resume from stop without sending anything special
     ret.standstill = cp_party.vl["ESP_B"]["ESP_vehicleStandstillSts"] == 1
     ret.accFaulted = cruise_state == "FAULT"
+
+    acc_state = cp_ap_party.vl["DAS_control"]["DAS_accState"]
+    ret.buttonEvents = [
+      *create_button_events(
+        acc_state,
+        self.prev_acc_state,
+        {13: ButtonType.cancel},
+      ),
+    ]
+    self.prev_acc_state = acc_state
 
     # Gear
     ret.gearShifter = GEAR_MAP[self.can_define.dv["DI_systemStatus"]["DI_gear"].get(int(cp_party.vl["DI_systemStatus"]["DI_gear"]), "DI_GEAR_INVALID")]
