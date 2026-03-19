@@ -137,10 +137,6 @@ class CarStateExt:
     if self.CP_SP.flags & ToyotaFlagsSP.SMART_DSU:
       self.acc_type = 1
 
-    if self.CP_SP.enableGasInterceptor:
-      gas = (cp.vl["GAS_SENSOR"]["INTERCEPTOR_GAS"] + cp.vl["GAS_SENSOR"]["INTERCEPTOR_GAS2"]) // 2
-      ret.gasPressed = gas > 805
-
     # ZSS support thanks to zorrobyte, ErichMoraga, and dragonpilot
     if self.CP_SP.flags & ToyotaFlagsSP.ZSS:
       zorro_steer = cp.vl["SECONDARY_STEER_ANGLE"]["ZORRO_STEER"]

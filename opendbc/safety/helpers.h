@@ -32,7 +32,19 @@
   (_a > 0) ? _a : (-_a); \
 })
 
+#ifndef SAFETY_NULL
+// this just provides a standard implementation of NULL
+// in lieu of including libc in the panda build
+// cppcheck-suppress [misra-c2012-21.1]
+#define SAFETY_NULL ((void*)0)
+#endif
+
+// STM32 HAL defines this
+#ifndef SAFETY_UNUSED
 #define SAFETY_UNUSED(x) ((void)(x))
+#endif
+
+#define COMPILE_TIME_ASSERT(pred) ((void)sizeof(char[1 - (2 * (!(pred) ? 1 : 0))]))
 
 // compute the time elapsed (in microseconds) from 2 counter samples
 // case where ts < ts_last is ok: overflow is properly re-casted into uint32_t
