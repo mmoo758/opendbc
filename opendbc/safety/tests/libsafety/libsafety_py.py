@@ -134,7 +134,6 @@ void tick_mads_state(bool vm, bool acc_main, bool op_allowed, bool braking, bool
 void set_heartbeat_engaged_mads(bool c);
 void mads_heartbeat_engaged_check(void);
 void set_steering_disengage(bool c);
-int get_gas_interceptor_prev(void);
 """)
 
 class LibSafety:

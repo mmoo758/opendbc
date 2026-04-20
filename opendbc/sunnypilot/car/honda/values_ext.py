@@ -16,4 +16,3 @@ class HondaFlagsSP(IntFlag):
 
 class HondaSafetyFlagsSP:
   NIDEC_HYBRID = 1
-  GAS_INTERCEPTOR = 2

@@ -26,8 +26,3 @@ class CarStateExt:
 
     if self.CP_SP.flags & HondaFlagsSP.HYBRID_ALT_BRAKEHOLD:
       ret.brakeHoldActive = cp.vl["BRAKE_HOLD_HYBRID_ALT"]["BRAKE_HOLD_ACTIVE"] == 1
-
-    if self.CP_SP.enableGasInterceptor:
-      # Same threshold as panda, equivalent to 1e-5 with previous DBC scaling
-      gas = (cp.vl["GAS_SENSOR"]["INTERCEPTOR_GAS"] + cp.vl["GAS_SENSOR"]["INTERCEPTOR_GAS2"]) // 2
-      ret.gasPressed = gas > 492
