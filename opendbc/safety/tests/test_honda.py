@@ -253,23 +253,23 @@ class HondaBase(common.CarSafetyTest):
         # Verify initial state
         self._rx(self._lkas_button_msg(False, 0))
         self.assertEqual(0, self.safety.get_mads_button_press())  # NOT_PRESSED
-        self.assertFalse(self.safety.get_controls_allowed_lateral())
+        self.assertFalse(self.safety.get_controls_allowed_lat())
 
         # Verify press sets correct internal state
         self._rx(self._lkas_button_msg(False, 1))
         self.assertEqual(1, self.safety.get_mads_button_press())  # PRESSED
-        self.assertEqual(enable_mads, self.safety.get_controls_allowed_lateral())
+        self.assertEqual(enable_mads, self.safety.get_controls_allowed_lat())
 
         # Verify release sets correct internal state
         self._rx(self._lkas_button_msg(False, 0))
         self.assertEqual(0, self.safety.get_mads_button_press())  # NOT_PRESSED
-        self.assertEqual(enable_mads, self.safety.get_controls_allowed_lateral())
+        self.assertEqual(enable_mads, self.safety.get_controls_allowed_lat())
 
         # Test invalid values - should not change button press state
         for invalid_setting in (2, 3):
           self._rx(self._lkas_button_msg(False, invalid_setting))
           self.assertEqual(0, self.safety.get_mads_button_press())  # Should remain NOT_PRESSED
-          self.assertEqual(enable_mads, self.safety.get_controls_allowed_lateral())
+          self.assertEqual(enable_mads, self.safety.get_controls_allowed_lat())
 
         # Verify we can still transition after invalid values
         self._rx(self._lkas_button_msg(False, 1))
