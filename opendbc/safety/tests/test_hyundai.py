@@ -200,7 +200,7 @@ class TestHyundaiSafety(HyundaiButtonBase, common.CarSafetyTest, common.DriverTo
               self._rx(self._speed_msg(0))
               self._rx(self._lkas_button_msg(False))
               self._rx(self._speed_msg(0))
-              self.assertEqual(enable_mads and has_lda_button_param, self.safety.get_controls_allowed_lat())
+              self.assertEqual(enable_mads and has_lda_button_param, self.safety.get_controls_allowed_lateral())
     finally:
       self.safety.set_current_safety_param_sp(default_safety_param_sp)
 
