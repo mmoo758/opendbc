@@ -262,51 +262,39 @@ class TestFwFingerprintTiming(unittest.TestCase):
         print(f'get_vin {name} case, query time={self.total_time / self.N} seconds')
 
   def test_fw_query_timing(self):
-    total_ref_time = {1: 7.4, 2: 8.0}
+    total_ref_time = 7.4
     brand_ref_times = {
-      1: {
-        'gm': 1.0,
-        'body': 0.1,
-        'chrysler': 0.3,
-        'ford': 1.5,
-        'honda': 0.45,
-        'hyundai': 0.65,
-        'mazda': 0.1,
-        'nissan': 0.8,
-        'subaru': 0.65,
-        'tesla': 0.1,
-        'toyota': 0.7,
-        'volkswagen': 0.65,
-        'rivian': 0.3,
-        'psa': 0.1,
-      },
-      2: {
-        'ford': 1.6,
-        'hyundai': 1.15,
-      }
+      'gm': 1.0,
+      'body': 0.1,
+      'chrysler': 0.3,
+      'ford': 1.5,
+      'honda': 0.45,
+      'hyundai': 0.65,
+      'mazda': 0.1,
+      'nissan': 0.8,
+      'subaru': 0.65,
+      'tesla': 0.1,
+      'toyota': 0.7,
+      'volkswagen': 0.65,
+      'rivian': 0.3,
+      'psa': 0.1,
     }
 
-    total_times = {1: 0.0, 2: 0.0}
-    for num_pandas in (1, 2):
-      for brand, config in FW_QUERY_CONFIGS.items():
-        with self.subTest(brand=brand, num_pandas=num_pandas):
-          avg_time = self._benchmark_brand(brand, num_pandas)
-          total_times[num_pandas] += avg_time
-          avg_time = round(avg_time, 2)
+    total_times = 0.0
+    for brand, config in FW_QUERY_CONFIGS.items():
+      with self.subTest(brand=brand):
+        avg_time = self._benchmark_brand(brand)
+        total_times += avg_time
+        avg_time = round(avg_time, 2)
 
-          ref_time = brand_ref_times[num_pandas].get(brand)
-          if ref_time is None:
-            # ref time should be same as 1 panda if no aux queries
-            ref_time = brand_ref_times[num_pandas - 1][brand]
+        ref_time = brand_ref_times[brand]
+        self._assert_timing(avg_time, ref_time)
+        print(f'{brand=}, {len(config.requests)=}, avg FW query time={avg_time} seconds')
 
-          self._assert_timing(avg_time, ref_time)
-          print(f'{brand=}, {num_pandas=}, {len(config.requests)=}, avg FW query time={avg_time} seconds')
-
-    for num_pandas in (1, 2):
-      with self.subTest(brand='all_brands', num_pandas=num_pandas):
-        total_time = round(total_times[num_pandas], 2)
-        self._assert_timing(total_time, total_ref_time[num_pandas])
-        print(f'all brands, total FW query time={total_time} seconds')
+    with self.subTest(brand='all_brands'):
+      total_time = round(total_times, 2)
+      self._assert_timing(total_time, total_ref_time)
+      print(f'all brands, total FW query time={total_time} seconds')
 
   def test_get_fw_versions(self):
     # some coverage on IsoTpParallelQuery and panda UDS library

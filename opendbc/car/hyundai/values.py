@@ -780,13 +780,11 @@ FW_QUERY_CONFIG = FwQueryConfig(
       [HYUNDAI_VERSION_REQUEST_LONG],
       [HYUNDAI_VERSION_RESPONSE],
       bus=0,
-      auxiliary=True,
     ),
     Request(
       [HYUNDAI_VERSION_REQUEST_LONG],
       [HYUNDAI_VERSION_RESPONSE],
       bus=1,
-      auxiliary=True,
       obd_multiplexing=False,
     ),
 
@@ -796,7 +794,6 @@ FW_QUERY_CONFIG = FwQueryConfig(
       [HYUNDAI_ECU_MANUFACTURING_DATE],
       [HYUNDAI_VERSION_RESPONSE],
       bus=0,
-      auxiliary=True,
       logging=True,
     ),
 
@@ -805,14 +802,12 @@ FW_QUERY_CONFIG = FwQueryConfig(
       [HYUNDAI_VERSION_REQUEST_ALT],
       [HYUNDAI_VERSION_RESPONSE],
       bus=0,
-      auxiliary=True,
       logging=True,
     ),
     Request(
       [HYUNDAI_VERSION_REQUEST_ALT],
       [HYUNDAI_VERSION_RESPONSE],
       bus=1,
-      auxiliary=True,
       logging=True,
       obd_multiplexing=False,
     ),
@@ -847,9 +842,6 @@ CAN_GEARS = {
 }
 
 CANFD_CAR = CAR.with_flags(HyundaiFlags.CANFD)
-CANFD_RADAR_SCC_CAR = CAR.with_flags(HyundaiFlags.RADAR_SCC)  # TODO: merge with UNSUPPORTED_LONGITUDINAL_CAR
-
-CANFD_UNSUPPORTED_LONGITUDINAL_CAR = CAR.with_flags(HyundaiFlags.CANFD_NO_RADAR_DISABLE)  # TODO: merge with UNSUPPORTED_LONGITUDINAL_CAR
 
 CAMERA_SCC_CAR = CAR.with_flags(HyundaiFlags.CAMERA_SCC)
 
@@ -859,9 +851,10 @@ EV_CAR = CAR.with_flags(HyundaiFlags.EV)
 
 LEGACY_SAFETY_MODE_CAR = CAR.with_flags(HyundaiFlags.LEGACY)
 
-# TODO: another PR with (HyundaiFlags.LEGACY | HyundaiFlags.UNSUPPORTED_LONGITUDINAL | HyundaiFlags.CAMERA_SCC |
-#       HyundaiFlags.CANFD_RADAR_SCC | HyundaiFlags.CANFD_NO_RADAR_DISABLE | )
-UNSUPPORTED_LONGITUDINAL_CAR = CAR.with_flags(HyundaiFlags.LEGACY) | CAR.with_flags(HyundaiFlags.UNSUPPORTED_LONGITUDINAL)
+UNSUPPORTED_LONGITUDINAL_CAR = {
+  "legacy": CAR.with_flags(HyundaiFlags.LEGACY),
+  "can": CAR.with_flags(HyundaiFlags.UNSUPPORTED_LONGITUDINAL),
+}
 
 # port extensions
 NON_SCC_CAR = CAR.with_sp_flags(HyundaiFlagsSP.NON_SCC)
