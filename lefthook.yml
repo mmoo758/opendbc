@@ -32,8 +32,8 @@ pre-commit:
           stashed=1
         fi
 
-        .venv/bin/ruff check . || status=$?
-        .venv/bin/python -m pytest -q -n 0 'opendbc/car/tests/test_car_interfaces.py::TestCarInterfaces::test_car_interfaces[TESLA_MODEL_3]' || status=$?
+        uv run ruff check . || status=$?
+        uv run pytest --rootdir=. -q -n 0 'opendbc/car/tests/test_car_interfaces.py::TestCarInterfaces::test_car_interfaces_TESLA_MODEL_3' || status=$?
 
         exit "$status"
 
@@ -54,5 +54,5 @@ test:
       run: opendbc/safety/tests/misra/test_misra.sh
 
     # *** tests ***
-    pytest:
-      run: pytest -n8
+    unittest:
+      run: unittest-parallel -j4
